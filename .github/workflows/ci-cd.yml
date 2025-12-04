@@ -45,24 +45,4 @@ jobs:
           git pull origin main
           source venv/bin/activate
           pip install -r requirements.txt
-
-          # Configurer Nginx
-          sudo tee /etc/nginx/sites-available/ocr_service > /dev/null <<'EOL'
-server {
-    listen 80;
-    server_name ocr.agensic.com;
-
-    location / {
-        proxy_pass http://127.0.0.1:8000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-    }
-}
-EOL
-          sudo rm -f /etc/nginx/sites-enabled/ocr_service
-          sudo ln -s /etc/nginx/sites-available/ocr_service /etc/nginx/sites-enabled/
-          sudo nginx -t
-          sudo systemctl restart nginx
-
-          # Redémarrer Gunicorn
           sudo systemctl restart ocr_service
