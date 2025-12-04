@@ -50,7 +50,7 @@ jobs:
           sudo tee /etc/nginx/sites-available/ocr_service > /dev/null <<'EOL'
 server {
     listen 80;
-    server_name your_domain.com;
+    server_name ocr.agensic.com;
 
     location / {
         proxy_pass http://127.0.0.1:8000;
