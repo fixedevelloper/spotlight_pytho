@@ -1,0 +1,6 @@
+flask
+pytesseract
+pillow
+opencv-python
+gunicorn
+pytest

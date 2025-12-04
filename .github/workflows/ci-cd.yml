@@ -1,0 +1,68 @@
+name: OCR Service CI/CD
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.11
+
+    - name: Install system dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y tesseract-ocr libsm6 libxext6 libxrender-dev
+
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Run tests
+      run: |
+        pytest tests/
+
+    - name: Deploy to server via SSH
+      if: github.ref == 'refs/heads/main' && success()
+      uses: appleboy/ssh-action@v0.1.7
+      with:
+        host: ${{ secrets.SERVER_IP }}
+        username: ${{ secrets.SERVER_USER }}
+        key: ${{ secrets.SERVER_SSH_KEY }}
+        script: |
+          cd /var/www/ocr_service
+          git pull origin main
+          source venv/bin/activate
+          pip install -r requirements.txt
+
+          # Configurer Nginx
+          sudo tee /etc/nginx/sites-available/ocr_service > /dev/null <<'EOL'
+server {
+    listen 80;
+    server_name your_domain.com;
+
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
+EOL
+          sudo rm -f /etc/nginx/sites-enabled/ocr_service
+          sudo ln -s /etc/nginx/sites-available/ocr_service /etc/nginx/sites-enabled/
+          sudo nginx -t
+          sudo systemctl restart nginx
+
+          # Redémarrer Gunicorn
+          sudo systemctl restart ocr_service
